@@ -31425,14 +31425,14 @@ class Mesh{
 };
 # 11 "main.cpp" 2
 # 1 "gid/input_output.h" 1
-# 11 "gid/input_output.h"
+# 10 "gid/input_output.h"
 string add_extension(char* filename, string extension){
 
     string name(filename);
 
     return name + extension;
 }
-# 25 "gid/input_output.h"
+# 24 "gid/input_output.h"
 void read_input_file(Mesh* G, char* filename){
 
 
@@ -31441,14 +31441,14 @@ void read_input_file(Mesh* G, char* filename){
     float Ad, An, initial_A, delta_t, t_0, t_f, x, y;
     int nnodes, nelems, ndirichlet, nneumann, index, n1, n2, n3;
 
-    string input_file = add_extension(filename, ".dat");
+    string input_file = add_extension("surkitTeamCopia", ".dat");
 
 
     ifstream datFile( input_file );
 
 
     if( datFile.is_open() ){
-# 58 "gid/input_output.h"
+# 57 "gid/input_output.h"
         datFile >> Ad >> An >> initial_A >> delta_t >> t_0 >> t_f >> nnodes >> nelems >> ndirichlet >> nneumann;
 
         G->set_parameters(Ad,An,initial_A,delta_t,t_0,t_f);
@@ -31517,16 +31517,16 @@ void read_input_file(Mesh* G, char* filename){
     else{
         cout << "Problem opening the input file. :(\n";
         exit(
-# 125 "gid/input_output.h" 3
+# 124 "gid/input_output.h" 3
             1
-# 125 "gid/input_output.h"
+# 124 "gid/input_output.h"
                         );
     }
 }
-# 140 "gid/input_output.h"
+# 139 "gid/input_output.h"
 void write_output_file(DS<DS<float>*>* R, char* filename){
 
-    string output_file = add_extension("filename", ".post.res");
+    string output_file = add_extension("surkitTeamCopia", ".post.res");
     ofstream postResFile( output_file );
 
 
@@ -31547,7 +31547,7 @@ void write_output_file(DS<DS<float>*>* R, char* filename){
 
 
             postResFile << "Result \"Water\" \"Load Case 1\" " << i+1 << " Scalar OnNodes\n";
-            postResFile << "ComponenAames \"A\"\n";
+            postResFile << "ComponentNames \"T\"\n";
             postResFile << "Values\n";
 
 
@@ -31576,9 +31576,9 @@ void write_output_file(DS<DS<float>*>* R, char* filename){
     else{
         cout << "Problem opening the output file. :(\n";
         exit(
-# 191 "gid/input_output.h" 3
+# 190 "gid/input_output.h" 3
             1
-# 191 "gid/input_output.h"
+# 190 "gid/input_output.h"
                         );
     }
 }
@@ -32311,19 +32311,20 @@ class FEM{
             SDDS<int>::destroy(indices);
         }
 # 563 "utilities/FEM_utilities.h"
-        static void apply_Dirichlet(int nnodes, int free_nodes, DS<float>** b, DS<float>* K, float Td, DS<int>* dirichlet_indices){
+        static void apply_Dirichlet(int nnodes, int free_nodes, DS<float>** b, DS<float>* K, DS<float>* K2, float Td, DS<int>* dirichlet_indices){
 
 
 
-            DS<float> *new_b, *T_D;
+            DS<float> *new_b, *T_D, *T_D2;
 
 
             SDDS<float>::create(&new_b, free_nodes, 1, MATRIX);
             SDDS<float>::create(&T_D, free_nodes, 1, MATRIX);
+            SDDS<float>::create(&T_D2, free_nodes, 1, MATRIX);
 
 
             bool bres;
-            float temp, acum;
+            float temp, acum, acum2;
 
 
 
@@ -32352,7 +32353,7 @@ class FEM{
 
 
                     acum = 0;
-
+                    acum2 = 0;
 
                     for(int j = 0; j < nnodes; j++){
 
@@ -32369,7 +32370,12 @@ class FEM{
 
                             SDDS<float>::extract(K,i,j,&temp);
 
+
                             acum += Td*temp;
+
+                            SDDS<float>::extract(K2,i,j,&temp);
+                            acum2 += Td*temp;
+                            cout << acum << "+++++++++++++" << acum2;
                         }
                     }
 
@@ -32377,6 +32383,7 @@ class FEM{
 
 
                     SDDS<float>::insert(T_D,row_index,0,-acum);
+                    SDDS<float>::insert(T_D2,row_index,0,-acum2);
 
 
                     row_index++;
@@ -32385,9 +32392,11 @@ class FEM{
 
 
             Math::sum_in_place(new_b,T_D);
+            Math::sum_in_place(new_b,T_D2);
 
 
             SDDS<float>::destroy(T_D);
+            SDDS<float>::destroy(T_D2);
 
 
 
@@ -32396,7 +32405,7 @@ class FEM{
 
             *b = new_b;
         }
-# 664 "utilities/FEM_utilities.h"
+# 673 "utilities/FEM_utilities.h"
         static void apply_Dirichlet(int nnodes, int free_nodes, DS<float>** matrix, DS<int>* dirichlet_indices){
 
 
@@ -32466,6 +32475,9 @@ class FEM{
         }
 };
 # 14 "main.cpp" 2
+
+
+
 template <typename A>
 Data SDDS<A>::ref = Data();
 
@@ -32493,7 +32505,7 @@ int main(int argc, char** argv){
     DS<float> *A, *T_full, *A_N, *M, *K1, *K2, *b;
     DS<int> *dirichlet_indices, *neumann_indices;
 
-    DS<DS<float>*> *Result,*M_locals,*K1_locals,*b_locals, *K2_locals;
+    DS<DS<float>*> *Result,*M_locals,*K1_locals, *K2_locals, *b_locals;
 
 
     SDDS<DS<float>*>::create(&Result,SINGLE_LINKED_LIST);
@@ -32539,6 +32551,8 @@ int main(int argc, char** argv){
     t += dt;
     float tf = G->get_parameter(FINAL_TIME);
 
+
+    int counter = 0;
 
     while( t <= tf ){
 
@@ -32607,7 +32621,8 @@ int main(int argc, char** argv){
 
 
 
-        Math::sub_in_place(b,A_N);
+        Math::product_in_place(A_N, -1);
+        Math::sum_in_place(b,A_N);
         cout << "OK\n\n";
 
         cout << "\tApplying Dirichlet conditions.. ";
@@ -32616,13 +32631,24 @@ int main(int argc, char** argv){
 
 
 
+        FEM::apply_Dirichlet(nnodes, free_nodes, &b, K1, K2, Ad, dirichlet_indices);
 
-        cout << "\t<<<<...>>>> ";
+
+        FEM::apply_Dirichlet(nnodes, free_nodes, &K1, dirichlet_indices);
+
+        FEM::apply_Dirichlet(nnodes, free_nodes, &K2, dirichlet_indices);
+
+
+
+
+
         FEM::apply_Dirichlet(nnodes, free_nodes, &M, dirichlet_indices);
         cout << "OK\n\n";
 
         cout << "\tCalculating temperature at next time step.\n\tUsing FEM generated formulas and Forward Euler... ";
-# 183 "main.cpp"
+        cout << "\tContador = " << counter;
+        counter++;
+# 199 "main.cpp"
         DS<float>* temp = Math::product(K1,A);
         DS<float>* temp1 = Math::product(K2,A);
 

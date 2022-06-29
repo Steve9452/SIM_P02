@@ -11,6 +11,9 @@ using namespace std;
 #include "gid/input_output.h"
 #include "utilities/math_utilities.h"
 #include "utilities/FEM_utilities.h"
+
+
+
 template <typename A>
 Data SDDS<A>::ref = Data();
 
@@ -38,7 +41,7 @@ int main(int argc, char** argv){
     DS<float> *A, *T_full, *A_N, *M, *K1, *K2, *b;
     DS<int> *dirichlet_indices, *neumann_indices;
 
-    DS<DS<float>*> *Result,*M_locals,*K1_locals,*b_locals, *K2_locals;
+    DS<DS<float>*> *Result,*M_locals,*K1_locals, *K2_locals, *b_locals;
 
     //Se crea la lista para almacenar los resultados de cada tiempo
     SDDS<DS<float>*>::create(&Result,SINGLE_LINKED_LIST);
@@ -83,7 +86,9 @@ int main(int argc, char** argv){
     float t = G->get_parameter(INITIAL_TIME);  //Se extrae el tiempo inicial
     t += dt;
     float tf = G->get_parameter(FINAL_TIME);   //Se extrae el tiempo final
+    
 
+    int counter = 0;
     //Comienza el ciclo de ejecución, el cual continúa hasta alcanzar el tiempo final
     while( t <= tf ){
 
@@ -152,22 +157,33 @@ int main(int argc, char** argv){
         //Se agrega la matriz de valores de Neumann a la matriz b global
 
         // b - A_N
-        Math::sub_in_place(b,A_N);
+        Math::product_in_place(A_N, -1);
+        Math::sum_in_place(b,A_N);
         cout << "OK\n\n";
 
         cout << "\tApplying Dirichlet conditions.. ";
-        //Se modifican las matrices globales para aplicar las condiciones de Dirichlet
-        // FEM::apply_Dirichlet(nnodes, free_nodes, &b, K1, Ad, dirichlet_indices);
-        // FEM::apply_Dirichlet(nnodes, free_nodes, &K1, dirichlet_indices);
 
+
+        // Se modifican las matrices globales para aplicar las condiciones de Dirichlet
+        // Math::sum_in_place()
+
+        FEM::apply_Dirichlet(nnodes, free_nodes, &b, K1, K2, Ad, dirichlet_indices);
+
+        // Recorte de matriz
+        FEM::apply_Dirichlet(nnodes, free_nodes, &K1, dirichlet_indices);
         // FEM::apply_Dirichlet(nnodes, free_nodes, &b, K2, Ad, dirichlet_indices);
-        // FEM::apply_Dirichlet(nnodes, free_nodes, &K2, dirichlet_indices);
-        cout << "\t<<<<...>>>> ";
+        FEM::apply_Dirichlet(nnodes, free_nodes, &K2, dirichlet_indices);
+
+        
+
+
+
         FEM::apply_Dirichlet(nnodes, free_nodes, &M, dirichlet_indices);
         cout << "OK\n\n";
 
         cout << "\tCalculating temperature at next time step.\n\tUsing FEM generated formulas and Forward Euler... ";
-
+        cout << "\tContador = " << counter;
+        counter++;
         /*
             Se procede a ejecutar la ecuación de transferencia de calor en su versión discretizada con Forward Euler:
 
@@ -199,7 +215,7 @@ int main(int argc, char** argv){
         DS<float>* temp3 = Math::product( temp2, b );
         Math::sum_in_place(A, temp3 );
         //La matriz temp ya no será utilizada, por lo que se libera su espacio en memoria
-        SDDS<float>::destroy(temp);SDDS<float>::destroy(temp2);SDDS<float>::destroy(temp3);
+        SDDS<float>::destroy(temp);SDDS<float>::destroy(temp2);SDDS<float>::destroy(temp3);SDDS<float>::destroy(temp1);
 
         cout << "OK\n\n\tUpdating list of results... ";
 

@@ -332,7 +332,7 @@ class FEM{
 
             float J = calculate_local_J(e->get_Node(0)->get_Point(), e->get_Node(1)->get_Point(), e->get_Node(2)->get_Point());
             //Se multiplica el contenido de la matriz K por el factor k*Area/D^2
-            Math::product_in_place(K, (-1) *( J/(20 * (pow(D,2)))));
+            Math::product_in_place(K, ( J/(20 * (D * D))));
 
             //Las matrices A y B, y sus transpuestas, ya no son necesarias, por lo
             //que se liberan sus espacios en memoria asignados
@@ -437,7 +437,7 @@ class FEM{
             SDDS<float>::insert(b,1,0,(1/8));
             SDDS<float>::insert(b,2,0,(1/8));
 
-            //Se multiplica el contenido de la matriz b por el factor Q*J/6
+            //Se multiplica el contenido de la matriz b por el factor J
             Math::product_in_place(b, J);
 
             //Se retorna la matriz construida
@@ -560,19 +560,20 @@ class FEM{
             - <dirichlet_indices> como un arreglo de enteros que contiene los IDs de todos los nodos que tienen
               asignada una condición de Dirichlet.
         */
-        static void apply_Dirichlet(int nnodes, int free_nodes, DS<float>** b, DS<float>* K, float Td, DS<int>* dirichlet_indices){
+        static void apply_Dirichlet(int nnodes, int free_nodes, DS<float>** b, DS<float>* K, DS<float>* K2, float Td, DS<int>* dirichlet_indices){
             //Se preparan las matrices a construir como parte del proceso
             //<new_b> será la matriz b después de remover las filas de los nodos con condición
             //de Dirichlet, mientras que <T_D> será el vector columna adicional
-            DS<float> *new_b, *T_D;
+            DS<float> *new_b, *T_D, *T_D2;
             //Se definen <new_b> y <T_D> como vectores columna con una cantidad de filas igual
             //a la cantidad de nodos que no tienen una condición de Dirichlet
             SDDS<float>::create(&new_b, free_nodes, 1, MATRIX);
             SDDS<float>::create(&T_D, free_nodes, 1, MATRIX);
+            SDDS<float>::create(&T_D2, free_nodes, 1, MATRIX);
 
             //Se preparan las variables auxiliares del proceso
             bool bres;
-            float temp, acum;
+            float temp, acum, acum2, temp2;
             //<row_index> se utilizará para llevar un control de las posiciones definidas
             //tanto en <new_b> como en <T_D>, inicia en 0 ya que en ambos casos primero se
             //definirán sus posiciones (0,0).
@@ -595,13 +596,13 @@ class FEM{
                     //Se extrae el valor en la posición actual de la matriz b
                     //Se utiliza *b, ya que la matriz b fue enviada por referencia
                     SDDS<float>::extract(*b,i,0,&temp);
+                    SDDS<float>::extract(*b,i,0,&temp2);
                     //Se inserta el valor estraído en la nueva matriz b en la
                     //posición actual de su recorrido, indicada por <row_index>
                     SDDS<float>::insert(new_b,row_index,0,temp);
-
                     //Se inicializa el acumulador
                     acum = 0;
-
+                    acum2 = 0;
                     //Se recorren en la matriz K las columnas de la fila actual
                     for(int j = 0; j < nnodes; j++){
                         //De manera similar al contador para las filas, el contador para las
@@ -617,8 +618,12 @@ class FEM{
                         if(bres){
                             //Se extrae el valor de la celda actual en K
                             SDDS<float>::extract(K,i,j,&temp);
+                            SDDS<float>::extract(K2,i,j,&temp2);
                             //Se acumula el producto del valor extraído por el valor de las condiciones de Dirichlet
                             acum += Td*temp;
+                            acum2 += Td*temp2;
+                            
+                            cout <<"["<< acum << "|" << acum2 << "] ";
                         }
                     }
 
@@ -626,6 +631,7 @@ class FEM{
                     //posición actual de su recorrido, indicada por <row_index>
                     //El resultado se inserta multiplicado por -1 para simular la resta que debe ejecutarse
                     SDDS<float>::insert(T_D,row_index,0,-acum);
+                    SDDS<float>::insert(T_D2,row_index,0,-acum2);
 
                     //Actualizamos <row_index> para avanzar en su recorrido
                     row_index++;
@@ -634,9 +640,11 @@ class FEM{
 
             //Se suma el vector columna adicional <T_D> a la nueva matriz b
             Math::sum_in_place(new_b,T_D);
+            Math::sum_in_place(new_b,T_D2);
 
             //<T_D> ya no será utilizado, por lo que se libera su espacio en memoria
             SDDS<float>::destroy(T_D);
+            SDDS<float>::destroy(T_D2);
             //Dado que la actual matriz b será sustituida por la nueva, liberamos también
             //su espacio en memoria
             //Se utiliza *b, ya que la matriz b fue enviada por referencia

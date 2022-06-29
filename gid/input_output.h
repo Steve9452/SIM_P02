@@ -29,7 +29,12 @@ void read_input_file(Mesh* G, char* filename){
     float Ad, An, initial_A, delta_t, t_0, t_f, x, y;
     int nnodes, nelems, ndirichlet, nneumann, index, n1, n2, n3;
     //Se anexa al nombre del archivo de entrada su extensión, y se abre para lectura
-    string input_file = add_extension(filename, ".dat");
+
+    // ******** modificacion temporal ********
+    // declaración original 
+    //string input_file = add_extension(filename, ".dat")
+
+    string input_file = add_extension("surkitTeamCopia", ".dat");
 
     
     ifstream datFile( input_file );
@@ -138,7 +143,13 @@ void read_input_file(Mesh* G, char* filename){
 */
 void write_output_file(DS<DS<float>*>* R, char* filename){
     //Se anexa al nombre del archivo de salida su extensión, y se abre para escritura
-    string output_file = add_extension("filename", ".post.res");
+
+        // ******** modificacion temporal ********
+    // declaración original 
+    //string output_file = add_extension(filename, ".post.res");
+
+
+    string output_file = add_extension("surkitTeamCopia", ".post.res");
     ofstream postResFile( output_file );
 
     //Se verifica si la apertura del archivo fue exitosa
@@ -159,7 +170,7 @@ void write_output_file(DS<DS<float>*>* R, char* filename){
 
             //Se colocan los encabezados para el resultado actual
             postResFile << "Result \"Water\" \"Load Case 1\" " << i+1 << " Scalar OnNodes\n";
-            postResFile << "ComponenAames \"A\"\n";
+            postResFile << "ComponentNames \"T\"\n";
             postResFile << "Values\n";
 
             //Se extraen las dimensiones de la matriz actual de resultados
